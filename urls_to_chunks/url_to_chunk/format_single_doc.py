@@ -73,19 +73,36 @@ def parse_law_to_chunks(html_content):
     current_article_num = ""
     current_article_content = []  # 缓存当前法条的多段文字（款、项）
 
+    # 内部辅助函数：去除“第一章 ”、“第二节 ”等前缀
+    def clean_hierarchy_text(text):
+        if not text:
+            return ""
+        # 匹配 第x章、第x节、第x编 后面跟着的内容
+        # 这里同时也处理掉可能存在的全角/半角空格
+        cleaned = re.sub(r'^第[一二三四五六七八九十百千]+[章节编]\s*', '', text)
+        return cleaned.strip()
+
     # 内部函数：打包生成一个 Chunk
     def flush_article():
         nonlocal chunk_index, current_article_num, current_article_content
         if current_article_num and current_article_content:
-            # 拼接 content 字段: source + chapter + section + 条文内容
-            prefix = metadata["source"]
-            if current_chapter:
-                prefix += current_chapter
-            if current_section:
-                prefix += current_section
+            # 1. 处理层级路径
+            path_parts = [metadata["source"]]
 
+            clean_chap = clean_hierarchy_text(current_chapter)
+            if clean_chap:
+                path_parts.append(clean_chap)
+
+            clean_sect = clean_hierarchy_text(current_section)
+            if clean_sect:
+                path_parts.append(clean_sect)
+
+            # 2. 拼接前缀：用“——”连接各级目录
+            prefix = "——".join(path_parts)
+
+            # 3. 拼接正文：前缀与正文之间用“"——"”连接
             full_text = "\n".join(current_article_content)
-            content_str = f"{prefix}\n{full_text}"
+            content_str = f"{prefix}——{full_text}"
 
             chunk = {
                 "content": content_str,
@@ -94,19 +111,19 @@ def parse_law_to_chunks(html_content):
                     "takeEffect": metadata["takeEffect"],
                     "lawType": metadata["lawType"],
                     "whoMake": metadata["whoMake"],
-                    "chapter": current_chapter,
+                    "chapter": current_chapter,  # metadata里建议保留原始信息，方便后续检索
                     "section": current_section,
                     "articleNumber": current_article_num,
                     "status": metadata["status"]
                 },
                 "chunkId": str(chunk_index),
-                "embedding": "[0.1, 0.2, ...]"  # 占位符
+                "embedding": "[0.1, 0.2, ...]"
             }
             chunks.append(chunk)
             chunk_index += 1
 
-        # 清空缓存，准备迎接下一条
         current_article_content = []
+
 
     # 获取所有可能包含内容的节点集合
     content_nodes = soup.find_all(class_=re.compile(r'navbian|navzhang|navjie|kuan-content|xiang-content'))
