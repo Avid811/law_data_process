@@ -1,14 +1,14 @@
 import json
 
 import config
-from urls_to_chunks.url_to_chunk.format_single_doc import parse_law_to_chunks
-from urls_to_chunks.url_to_chunk.get_single_doc import fetch_page_with_cookies
+from urls_to_chunks.pipeline.format_single_doc import parse_law_to_chunks
+from urls_to_chunks.pipeline.get_single_doc import fetch_page_with_cookies
 
 
 def main():
-    """主函数，用于测试"""
+    """串联爬取法条+格式化chunks的主流程"""
     # 目标URL
-    url = "https://www.pkulaw.com/chl/d653ed619d0961c0bdfb.html?keyword=%E7%BD%91%E7%BB%9C%E4%BF%A1%E6%81%AF%E4%BF%9D%E6%8A%A4%E6%B3%95&way=listView"
+    url = "https://www.pkulaw.com/chl/1dd3a2fb498ecb3ebdfb.html?keyword=中华人民共和国数据安全法&way=listView"
 
     # Cookie字符串
     cookie_str = config.COOKIE_STR
@@ -27,7 +27,7 @@ def main():
 
     chunks = parse_law_to_chunks(html_content)
 
-    with open("chunks.txt", "w", encoding="utf-8") as file:
+    with open("《中华人民共和国数据安全法》_chunks.txt", "w", encoding="utf-8") as file:
         for chunk in chunks:
             # 将字典转换为JSON字符串
             file.write(json.dumps(chunk, ensure_ascii=False) + "\n")
