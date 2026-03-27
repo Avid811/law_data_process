@@ -72,17 +72,23 @@ def fetch_page_with_cookies(target_url, cookie_str, chromedriver_path=None, head
 
         # 添加cookie到浏览器
         print("\n正在添加cookie...")
-        cookies = []
-        for item in cookie_str.split('; '):
-            if '=' in item:
-                name, value = item.split('=', 1)
-                cookies.append({'name': name.strip(), 'value': value.strip()})
+        # 先按分号拆分，再处理每个键值对
+        items = [i.strip() for i in cookie_str.split(';') if i.strip()]
 
-        for cookie in cookies:
-            try:
-                driver.add_cookie(cookie)
-            except Exception as e:
-                print(f"✗ 添加cookie失败 {cookie['name']}: {e}")
+        for item in items:
+            if '=' in item:
+                # 限制只拆分第一个等号，防止 value 里面包含等号导致报错
+                name, value = item.split('=', 1)
+                cookie_dict = {
+                    'name': name.strip(),
+                    'value': value.strip(),
+                    # 也可以尝试指定 domain，如果还是失效的话
+                    # 'domain': '.yourdomain.com'
+                }
+                try:
+                    driver.add_cookie(cookie_dict)
+                except Exception as e:
+                    print(f"✗ 添加cookie失败 {name.strip()}: {e}")
 
         # 刷新页面以使cookie生效
         print("刷新页面以使cookie生效...")

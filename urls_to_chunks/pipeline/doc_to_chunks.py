@@ -8,7 +8,7 @@ from urls_to_chunks.pipeline.get_single_doc import fetch_page_with_cookies
 def main():
     """串联爬取法条+格式化chunks的主流程"""
     # 目标URL
-    url = "https://www.pkulaw.com/chl/1dd3a2fb498ecb3ebdfb.html?keyword=中华人民共和国数据安全法&way=listView"
+    url = "https://www.pkulaw.com/chl/7c7e81f43957c58bbdfb.html"
 
     # Cookie字符串
     cookie_str = config.COOKIE_STR
@@ -27,7 +27,7 @@ def main():
 
     chunks = parse_law_to_chunks(html_content)
 
-    with open("《中华人民共和国数据安全法》_chunks.txt", "w", encoding="utf-8") as file:
+    with open("《宪法》_chunks.txt", "w", encoding="utf-8") as file:
         for chunk in chunks:
             # 将字典转换为JSON字符串
             file.write(json.dumps(chunk, ensure_ascii=False) + "\n")
