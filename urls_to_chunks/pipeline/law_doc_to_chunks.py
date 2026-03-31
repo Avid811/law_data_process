@@ -1,5 +1,7 @@
 import json
 
+from Tools.scripts.verify_ensurepip_wheels import print_notice
+
 import config
 from urls_to_chunks.pipeline.format_single_doc import parse_law_to_chunks
 from urls_to_chunks.pipeline.get_single_doc import fetch_page_with_cookies
@@ -8,8 +10,7 @@ from urls_to_chunks.pipeline.get_single_doc import fetch_page_with_cookies
 def main():
     """串联爬取法条+格式化chunks的主流程"""
     # 目标URL
-    url = "https://www.pkulaw.com/protocol/1130add1b4817d60a9e779d10b2448dcbdfb.html?keyword=%E4%B8%AA%E4%BA%BA%E4%BF%A1%E6%81%AF%E5%87%BA%E5%A2%83%E5%AE%89%E5%85%A8%E8%AF%84%E4%BC%B0%E5%8A%9E%E6%B3%95&way=listView"
-
+    url = "https://www.pkulaw.com/protocol/790df01963a8406c804742100c2ad401bdfb.html?keyword=%E4%BA%92%E8%81%94%E7%BD%91%E8%B7%9F%E5%B8%96%E8%AF%84%E8%AE%BA%E6%9C%8D%E5%8A%A1%E7%AE%A1%E7%90%86%E8%A7%84%E5%AE%9A&way=listView"
 
 
 
@@ -30,10 +31,10 @@ def main():
         headless=False# 设置为False可以显示浏览器窗口，便于调试
     )
 
-
+    print(html_content)
     chunks = parse_law_to_chunks(html_content)
 
-    with open("《个人信息出境安全评估办法》_chunks.txt", "w", encoding="utf-8") as file:
+    with open("../../part_chunks_source/《互联网跟帖评论服务管理规定》_chunks.txt", "w", encoding="utf-8") as file:
         for chunk in chunks:
             # 将字典转换为JSON字符串
             file.write(json.dumps(chunk, ensure_ascii=False) + "\n")

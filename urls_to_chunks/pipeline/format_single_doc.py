@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 import re
 import json
 from collections import defaultdict
@@ -43,11 +43,33 @@ def parse_law_to_chunks(html_content):
         el.decompose()
 
     # ==========================================
-    # 3. 收集所有可能的条目 (解决重复的核心：暂存)
+    # 3. 增强：规范化 DOM 结构，彻底解决嵌套和无标签文本问题
     # ==========================================
-    # 使用字典存储：{ "第一条": [版本1, 版本2, ...] }
-    article_candidates = defaultdict(list)
+    # a. 消除源码格式带来的换行符干扰（避免法条被意外拦腰截断）
+    for text_node in soup.find_all(string=True):
+        if text_node.parent and text_node.parent.name not in ['pre', 'code']:
+            cleaned = text_node.replace('\n', ' ').replace('\r', '')
+            text_node.replace_with(cleaned)
 
+    # b. 将所有的 <br>, <br/> 替换为换行符
+    for br in soup.find_all('br'):
+        br.replace_with('\n')
+
+    # c. 把所有的行内标签解包（unwrap），使得文本不被割裂（例如保留 <a> 里的文本且无缝衔接）
+    inline_tags = ['span', 'a', 'strong', 'b', 'i', 'em', 'u', 'font', 'sup', 'sub', 'label']
+    for tag in soup.find_all(inline_tags):
+        tag.unwrap()
+
+    # d. 对于块级元素，在其前后强制插入换行符，确保其内容独立成行
+    block_tags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'tr', 'td', 'th', 'table', 'ul', 'ol']
+    for tag in soup.find_all(block_tags):
+        tag.insert_before(NavigableString('\n'))
+        tag.insert_after(NavigableString('\n'))
+
+    # ==========================================
+    # 4. 收集所有可能的条目 (基于纯文本行扫描)
+    # ==========================================
+    article_candidates = defaultdict(list)
     ctx = {"chapter": "", "section": "", "article_num": "", "article_content": []}
 
     def clean_hierarchy_text(text):
@@ -75,15 +97,15 @@ def parse_law_to_chunks(html_content):
                 article_candidates[ctx["article_num"]].append(entry)
         ctx["article_content"] = []
 
-    # 线性扫描
-    all_elements = soup.find_all(['p', 'div'], recursive=True)
-    for p in all_elements:
-        # 严格防重：如果当前节点内部还有 p 或 div，跳过，只取最底层含文字的节点
-        if p.find(['p', 'div']):
-            continue
+    # 提取处理过后的全部纯文本，按换行符切割成干净的列表
+    raw_text = soup.get_text()
+    lines = raw_text.split('\n')
 
-        text = p.get_text(" ", strip=True).replace('\u3000', ' ')
-        if not text: continue
+    for line in lines:
+        # 去除全角空格和首尾留白
+        text = line.replace('\u3000', ' ').strip()
+        if not text:
+            continue
 
         # 识别章/节
         if re.match(r'^第[一二三四五六七八九十百千]+章', text):
@@ -111,14 +133,11 @@ def parse_law_to_chunks(html_content):
     flush_to_candidates()
 
     # ==========================================
-    # 4. 去重过滤逻辑 (倒数第二长)
+    # 5. 去重过滤逻辑 (保留倒数第二长)
     # ==========================================
     final_chunks = []
-    # 按照法条出现的顺序排序（第一条, 第二条...）
-    # 注意：这里假设条目是按顺序解析出来的
-    sorted_article_keys = sorted(article_candidates.keys(), key=lambda x: len(x))  # 简单排序，如果需要严格数字序需转换
-
     index_counter = 0
+
     for art_num in article_candidates:
         versions = article_candidates[art_num]
 
@@ -126,7 +145,6 @@ def parse_law_to_chunks(html_content):
         versions.sort(key=lambda x: x["raw_text_len"])
 
         # 逻辑：保留倒数第二长
-        # 如果只有1个版本，就选这一个；如果有多个，选 index = -2
         if len(versions) >= 2:
             selected = versions[-2]
         else:
